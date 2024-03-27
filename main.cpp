@@ -6,6 +6,7 @@
 #include <cmath>
 #include <thread>
 #include <stdexcept>
+#include <fstream>
 #define f cin
 #define g cout
 using namespace std;
@@ -21,8 +22,12 @@ vector<int>get_number(int val_min,int val_max,int cnt)
     return a;
 }
 vector<int>a,cpy;
+bool inTime = true;
+struct TimeOutException : public std::exception {};
 void MergeSort(int st,int dr)
 {
+    if (!inTime)
+        throw TimeOutException{};
     if(st==dr)
         return;
     int mj=st+(dr-st)/2;
@@ -56,7 +61,6 @@ void InsertionSort()
         a[last+1]=val;
     }
 }
-int h[100000001],nr;
 void Insert_Heap(int val, int* h, int &nr)
 {
     h[++nr]=val;
@@ -95,9 +99,11 @@ void Erase_Heap(int* h, int &nr)
 void HeapSort()
 {
     int* h = new int[a.size()];
-    nr = 0;
+    int nr = 0;
     while(!a.empty())
     {
+        if (!inTime)
+            throw TimeOutException{};
         int val=a.back();
         a.pop_back();
         Insert_Heap(val, h, nr);
@@ -106,6 +112,9 @@ void HeapSort()
     while(nr>0)
     {
         //g<<h[1]<<" ";
+        if (!inTime)
+            throw TimeOutException{};
+        a.push_back(h[1]);
         Erase_Heap(h, nr);
     }
 }
@@ -173,6 +182,8 @@ void ShellSort()
         cout<<gap<<" ";
         for(int i = gap; i < N; i++)
         {
+            if (!inTime)
+                throw TimeOutException{};
             int temp = a[i];
             int j;
             for(j = i; (j >= gap) && (a[j - gap] > temp); j -= gap)
@@ -199,6 +210,8 @@ int divide(int st,int dr)
 }
 void QuickSort(int st, int dr)
 {
+    if (!inTime)
+        throw TimeOutException{};
     if(st>=dr)
     {
         return;
@@ -207,15 +220,26 @@ void QuickSort(int st, int dr)
     QuickSort(st,pivot-1);
     QuickSort(pivot+1,dr);
 }
-struct TimeOutException : public std::exception {};
+
+bool isActive;
 double Time_sort(int tip)
 {
-    a=cpy;
+    inTime = true;
+    isActive = true;
     auto start = std::chrono::high_resolution_clock::now();
     std::thread([]{
-        std::this_thread::sleep_for(360s);
-        throw TimeOutException{};}
+        auto startTime = std::chrono::steady_clock::now();
+        while (isActive)
+        {
+            auto endTime = std::chrono::steady_clock::now();
+            std::chrono::duration<double> duration = endTime - startTime;
+            if (duration.count() >= 60)
+                break;
+        }
+        inTime = false;
+        }
     ).detach();
+    a=cpy;
     if(tip==1)
     {
         g<<"Timpul pentru MergeSort este: ";
@@ -253,6 +277,7 @@ double Time_sort(int tip)
     }
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
+    isActive = false;
     return duration.count();
 }
 void afisare()
@@ -276,9 +301,23 @@ bool is_sorted()
 
 int main()
 {
-    cpy=get_number(1,10000,100000000);
-    g<<Time_sort(7)<<endl;
-    g<<"Este bine sortat: "<<is_sorted();
+    cout<<"Sortari: \nMerge-1\nInsertion-2\nHeap-3\nRadixB10-4\nRadixB2-5\nShell-6\nQuick-7\n";
+    int S;
+    cin>>S;
+    ifstream f("input.in");
+    int inputs, minVal, maxVal, elemCnt;
+    f>>inputs;
+    for(int i=0; i<inputs; i++)
+    {
+        f>>minVal>>maxVal>>elemCnt;
+        g<<minVal<<" "<<maxVal<<" "<<elemCnt<<" -> ";
+        cpy=get_number(minVal, maxVal, elemCnt);
+        try{
+        g<<Time_sort(S)<<endl;
+        g<<"Este bine sortat: "<<is_sorted()<<endl;
+        }
+        catch(...){g<<"Time exceeded!\n";}
+    }
     //afisare();
     return 0;
 }
