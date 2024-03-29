@@ -56,8 +56,11 @@ void InsertionSort()
     {
         int val=a[i];
         int last=i-1;
-        while(a[last]>val&&last>=0)
+        while(a[last]>val&&last>=0){
+            if (!inTime)
+                throw TimeOutException{};
             a[last+1]=a[last],last--;
+        }
         a[last+1]=val;
     }
 }
@@ -121,7 +124,7 @@ void HeapSort()
 void RadixSort_10()
 {
     int p=1,mx,n=a.size();
-    vector<int>nr(n+1),aux(n+1);
+    vector<int>nr(11),aux(n+1);
     for(int i=0; i<n; i++)
         mx=max(mx,a[i]);
     for(int poz=1; p<=mx; poz++)
@@ -134,6 +137,8 @@ void RadixSort_10()
             nr[i]+=nr[i-1];
         for(int i=n-1; i>=0; i--)
         {
+            if (!inTime)
+                throw TimeOutException{};
             aux[nr[a[i]/p%10]]=a[i];
             nr[a[i]/p%10]--;
         }
@@ -147,7 +152,7 @@ void RadixSort_16()
     int p=1,mx,n=a.size();
     int n_16=(1<<16);
 
-    vector<int>nr(n_16+1),aux(n_16+1);
+    vector<int>nr(n_16),aux(a.size());
     for(int poz=1; poz<=2; poz++)
     {
         for(int i=0; i<n_16; i++)
@@ -158,6 +163,8 @@ void RadixSort_16()
             nr[i]+=nr[i-1];
         for(int i=n-1; i>=0; i--)
         {
+            if (!inTime)
+                throw TimeOutException{};
             aux[nr[a[i]/p%n_16]]=a[i];
             nr[a[i]/p%n_16]--;
         }
@@ -165,6 +172,8 @@ void RadixSort_16()
             a[i]=aux[i+1];
         p*=n_16;
     }
+    std::vector<int>().swap(nr);
+    std::vector<int>().swap(aux);
 }
 void ShellSort()
 {
@@ -179,7 +188,6 @@ void ShellSort()
     for(int x = 0; x < gaps.size(); x++)
     {
         int gap = gaps[x];
-        cout<<gap<<" ";
         for(int i = gap; i < N; i++)
         {
             if (!inTime)
@@ -199,6 +207,8 @@ int divide(int st,int dr)
     int piv = a[randomIndex];//pivot random
     //int piv=a[dr];///alegem pivotul sa fie ultimul element
     int i=st-1;
+    swap(a[randomIndex],a[dr]);
+
     for(int j=st; j<dr; j++)
         if(a[j]<piv)
         {
@@ -211,7 +221,7 @@ int divide(int st,int dr)
 void QuickSort(int st, int dr)
 {
     if (!inTime)
-        throw TimeOutException{};
+            throw TimeOutException{};
     if(st>=dr)
     {
         return;
@@ -233,7 +243,7 @@ double Time_sort(int tip)
         {
             auto endTime = std::chrono::steady_clock::now();
             std::chrono::duration<double> duration = endTime - startTime;
-            if (duration.count() >= 60)
+            if (duration.count() >= 300)
                 break;
         }
         inTime = false;
@@ -305,18 +315,19 @@ int main()
     int S;
     cin>>S;
     ifstream f("input.in");
-    int inputs, minVal, maxVal, elemCnt;
+    int inputs, minVal, maxVal;
+    long long elemCnt;
     f>>inputs;
     for(int i=0; i<inputs; i++)
     {
+        try{
         f>>minVal>>maxVal>>elemCnt;
         g<<minVal<<" "<<maxVal<<" "<<elemCnt<<" -> ";
         cpy=get_number(minVal, maxVal, elemCnt);
-        try{
         g<<Time_sort(S)<<endl;
         g<<"Este bine sortat: "<<is_sorted()<<endl;
         }
-        catch(...){g<<"Time exceeded!\n";}
+        catch(...){g<<"Nu poate sorta!\n";}
     }
     //afisare();
     return 0;
