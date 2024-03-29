@@ -21,6 +21,23 @@ vector<int>get_number(int val_min,int val_max,int cnt)
     }
     return a;
 }
+
+vector<int>test_insertion(int val_min,int val_max,int cnt)
+{
+
+    vector<int>a;
+    const int n=10;
+    srand(static_cast<unsigned int>(std::time(nullptr)));
+    for(int i=0; i<n; i++)
+    {
+        int randomNumber = val_min + rand() % (val_max - val_min + 1);
+        a.push_back(randomNumber);
+    }
+    for(int i=n;i<=cnt;i++)
+        a.push_back(i);
+    return a;
+}
+
 vector<int>a,cpy;
 bool inTime = true;
 struct TimeOutException : public std::exception {};
@@ -146,6 +163,8 @@ void RadixSort_10()
             a[i]=aux[i+1];
         p=p*10;
     }
+    std::vector<int>().swap(nr);
+    std::vector<int>().swap(aux);
 }
 void RadixSort_16()
 {
@@ -306,6 +325,7 @@ bool is_sorted()
         else prev = a[i];
         i++;
     }
+    std::vector<int>().swap(a);
     return true;
 }
 
