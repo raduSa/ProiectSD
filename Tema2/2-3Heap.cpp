@@ -133,6 +133,22 @@ void test(int val_min, int val_max, int cnt, MaxHeap23* H) {
     cout << endl << duration.count();
 }
 
+void insertAndDel(int val_min, int val_max, int cnt, MaxHeap23* H) {
+    auto start = std::chrono::high_resolution_clock::now();
+    int randomNumber;
+    srand(static_cast<unsigned int>(std::time(nullptr)));
+    for (int i = 0; i < cnt; i++) {
+        if (i && i % 1000 == 0) {
+            cout << i << " " << H->extractMax() << "\n";
+        }
+        randomNumber = val_min + rand() % (val_max - val_min + 1);
+        H->insert(randomNumber);
+    }
+    auto end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    cout << endl << duration.count();
+}
+
 int main() {
     /*int n,m,x,y,tip;
     f>>n>>m;
@@ -162,6 +178,7 @@ int main() {
         }
     }*/
     MaxHeap23* H = new MaxHeap23();
-    test(pow(10, 3), pow(10, 7), 3 * pow(10, 5), H);
+    //test(pow(10, 3), pow(10, 7), 3 * pow(10, 5), H);
+    insertAndDel(pow(10, 3), pow(10, 7), 3 * pow(10, 5), H);
     return 0;
 }
