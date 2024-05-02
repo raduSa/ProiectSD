@@ -3,6 +3,7 @@
 #include <deque>
 #include <algorithm>
 #include <map>
+#include <chrono>
 
 using namespace std;
 
@@ -18,7 +19,6 @@ public:
     Active* active = nullptr;
     int loss = 0;
     int rank = 0;
-    bool color = false; // idk
 
     Node(const int& key) : key(key) {}
 
@@ -64,7 +64,7 @@ public:
     }
 
     bool isActive() const { return active && active->flag; }
-        
+
     bool isPassive() const { return !isActive(); }
 
     bool isActiveRoot() const { return (parent && parent->isPassive() && isActive()); }
@@ -99,17 +99,6 @@ public:
         }
         for (auto child : children)
             child->updateActiveNode(map);
-    }
-
-    // idk yet
-    void updateActivePosiveNode(map<int, deque<Node*>>& map) {
-        if (isActive() && !isActiveRoot() && loss > 0) {
-            if (!map.count(rank))
-                map[rank] = deque<Node*>();
-            map[rank].push_back(this);
-        }
-        for (auto child : children)
-            child->updateActivePosiveNode(map);
     }
 
     Node* getActiveLossTwo() {
@@ -149,7 +138,7 @@ struct Heap {
         int n = root->children.size();
         if (n < 3)
             return false;
-        
+
         vector<Node*> temp = { root->children[n - 1], root->children[n - 2], root->children[n - 3] };
         // ultimele 3 noduri trebuie sa fie passive linkable
         if (!temp[0]->isPassiveLinkable() || !temp[1]->isPassiveLinkable() || !temp[2]->isPassiveLinkable())
@@ -199,7 +188,7 @@ struct Heap {
                 Node* x = pair.second[0];
                 Node* y = pair.second[1];
                 //cout << "Active Root Reduction on " << x->key << " " << y->key << " \n";
-                if (x->key > y->key) 
+                if (x->key > y->key)
                     swap(x, y);
                 // sterge pe y din lista de copii
                 auto it = find(y->parent->children.begin(), y->parent->children.end(), y);
@@ -355,7 +344,7 @@ Heap* merge(Heap* x, Heap* y) {
     return smallRootHeap;
 }
 
-Heap* insert (Heap* h, const int& val) {
+Heap* insert(Heap* h, const int& val) {
     Node* node = new Node(val);
     if (!h->root) {
         h->root = node;
@@ -406,7 +395,7 @@ Heap* deleteMin(Heap* h) {
         h->head.erase(it);
     h->size--;
     h->root->active = nullptr;// might leak
-    
+
     for (int j = 0; j < min(2, int(h->head.size())); j++) {
         Node* c = h->head[0];
         h->head.pop_front();
@@ -477,11 +466,37 @@ Heap* removeNumbers(int cnt, Heap* H) {
     int k = 0;
     for (int i = 0; i < cnt; i++) {
         k++;
-        cout << H->root->key << "\n";
+        //cout << H->root->key << "\n";
         H = deleteMin(H);
     }
     cout << k;
     return H;
+}
+
+void test(int val_min, int val_max, long long cnt, Heap* H) {
+    auto start = std::chrono::high_resolution_clock::now();
+    H = insertNumbers(val_min, val_max, cnt, H);
+    H = removeNumbers(cnt, H);
+    auto end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    cout << endl << duration.count();
+}
+
+void insertAndDel(int val_min, int val_max, long long cnt, Heap* H) {
+    auto start = std::chrono::high_resolution_clock::now();
+    int randomNumber;
+    srand(static_cast<unsigned int>(std::time(nullptr)));
+    for (int i = 0; i < cnt; i++) {
+        if (i && i % 1000 == 0) {
+            cout << i << " " << H->root->key << "\n";
+            H = deleteMin(H);
+        }
+        randomNumber = val_min + rand() % (val_max - val_min + 1);
+        H = insert(H, randomNumber);
+    }
+    auto end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    cout << endl << duration.count();
 }
 
 int main()
@@ -521,8 +536,11 @@ int main()
         }
         std::cout << std::endl;
     }*/
-    H = insertNumbers(1, 1000, pow(10, 5), H);
-    cout << "delete";
-    H = removeNumbers(1000, H);
+    //test(pow(10, 3), pow(10, 7), pow(10, 5), H);
+    insertAndDel(pow(10, 3), pow(10, 7), pow(10, 5), H);
     return 0;
 }
+
+
+
+
