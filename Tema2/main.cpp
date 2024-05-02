@@ -67,7 +67,7 @@ public:
         
     bool isPassive() const { return !isActive(); }
 
-    bool isActiveRoot() const { return parent && parent->isPassive() && isActive(); }
+    bool isActiveRoot() const { return (parent && parent->isPassive() && isActive()); }
 
     int firstPassiveChildIndex() {
         int i;
@@ -81,6 +81,7 @@ public:
     // se face pe un active root
     void updateActiveRoot(map<int, deque<Node*>>& map) {
         if (isActiveRoot()) {
+            //cout << key << " ";
             if (!map.count(rank))
                 map[rank] = deque<Node*>();
             map[rank].push_back(this);
@@ -134,6 +135,7 @@ struct Heap {
     Node* root = nullptr;
     int size = 0;
     Active* active = new Active();
+    deque<Node*> head;
 
     Node* findNode(const Node* node) {
         if (!root)
@@ -147,6 +149,12 @@ struct Heap {
             return false;
         
         vector<Node*> temp = { root->children[n - 1], root->children[n - 2], root->children[n - 3] };
+        // ultimele 3 noduri trebuie sa fie passive linkable
+        if (!temp[0]->isPassiveLinkable() || !temp[1]->isPassiveLinkable() || !temp[2]->isPassiveLinkable())
+            return false;
+
+        cout << "Root Degree Reduction\n";
+        // sortez ult 3 noduri crescator dupa cheie
         sort(temp.begin(), temp.end(), [](const Node* a, const Node* b) {
             return a->key < b->key;
             });
@@ -179,13 +187,113 @@ struct Heap {
     }
 
     bool activeRootReduction() {
+        map<int, deque<Node*>> map;
         bool stop = false;
 
-    }
-    bool oneNodeLossReduction() {}
-    bool twoNodeLossReduction() {}
+        root->updateActiveRoot(map);
 
-    
+        for (const auto& pair : map)
+            if (pair.second.size() >= 2 && !stop) {
+                Node* x = pair.second[0];
+                Node* y = pair.second[1];
+                cout << "Active Root Reduction on " << x->key << " " << y->key << " \n";
+                if (x->key > y->key) 
+                    swap(x, y);
+                // sterge pe y din lista de copii
+                auto it = find(y->parent->children.begin(), y->parent->children.end(), y);
+                if (it != y->parent->children.end())
+                    y->parent->children.erase(it);
+
+                y->parent = x;
+                x->children.push_front(y);
+                x->rank++;
+                x->loss = 0;
+                y->loss = 0;
+                Node* z = x->children[x->children.size() - 1];
+                if (z->isPassiveLinkable()) {
+                    root->children.push_back(z);
+                    z->parent = root;
+                    x->children.pop_back();
+                }
+                else if (z->isPassive()) {
+                    int index = root->firstPassiveChildIndex();
+                    auto it = root->children.begin() + index;
+                    root->children.insert(it, z);
+                    z->parent = root;
+                    x->children.pop_back();
+                }
+                stop = true;
+            }
+        return stop;
+    }
+
+    bool oneNodeLossReduction() {
+        Node* x = root->getActiveLossTwo();
+        if (!x)
+            return false;
+        cout << "One node Loss Reduction\n";
+        Node* y = x->parent;
+
+        root->children.push_front(x);
+        x->parent = root;
+
+        // sterge pe x din copii lui y
+        auto it = find(y->children.begin(), y->children.end(), x);
+        if (it != y->children.end())
+            y->children.erase(it);
+
+        x->loss = 0;
+        if (y->isActive()) {
+            y->rank--;
+            if (!y->isActiveRoot())
+                y->loss++;
+        }
+        return true;
+    }
+
+    bool twoNodeLossReduction() {
+        map<int, deque<Node*>> map;
+        bool stop = false;
+
+        root->updateActiveNode(map);
+
+        for (const auto& pair : map) {
+            Node* x = nullptr; Node* y = nullptr;
+            // each node in value
+            for (const auto& c : pair.second)
+                if (c->loss == 1 && c->isActive() && !c->isActiveRoot()) {
+                    if (x)
+                        y = c;
+                    else x = c;
+                }
+
+            if (x && y && !stop) {
+                stop = true;
+                if (x->key > y->key)
+                    swap(x, y);
+                cout << "Two node Loss Reduction\n";
+
+                Node* z = y->parent;
+                x->children.push_front(y);
+                y->parent = x;
+                // sterge pe y din copii lui z
+                auto it = find(z->children.begin(), z->children.end(), y);
+                if (it != z->children.end())
+                    z->children.erase(it);
+
+                x->rank++;
+                x->loss = 0;
+                y->loss = 0;
+
+                if (z->isActive()) {
+                    z->rank--;
+                    if (!z->isActiveRoot())
+                        z->loss++;
+                }
+            }
+        }
+        return stop;
+    }
 };
 
 Heap* merge(Heap* x, Heap* y) {
@@ -215,12 +323,22 @@ Heap* merge(Heap* x, Heap* y) {
     smallRootHeap->size += largeRootHeap->size;
     smallRootHeap->active = largeSizeHeap->active;
 
+    smallSizeHeap->head.push_back(largeRootHeap->root);
+    for (Node* node : largeSizeHeap->head)
+        smallSizeHeap->head.push_back(node);
+    smallRootHeap->head = smallSizeHeap->head;
+
     // restore invariants
     int numA = 1;
     int numR = 1;
 
     while (true) {
         bool stop = true;
+        if (numA)
+            if (smallRootHeap->activeRootReduction()) {
+                numA--;
+                stop = false;
+            }
         if (numR)
             if (smallRootHeap->rootDegreeReduction()) {
                 numR--;
@@ -248,6 +366,76 @@ Heap* insert (Heap* h, const int& val) {
     return merge(h, newHeap);
 }
 
+Heap* deleteMin(Heap* h) {
+    if (!h->root)
+        return h;
+    int Min = 999999;
+    Node* minNode = nullptr;
+    for (const auto& child : h->root->children)
+        if (child->key < Min) {
+            Min = child->key;
+            minNode = child;
+        }
+    if (!minNode) {
+        h = new Heap();
+        return h;
+    }
+    // leg nodurile de noul minim
+    for (const auto& child : h->root->children) {
+        if (child != minNode)
+            if (child->isActive())
+                minNode->children.push_front(child);
+            else if (child->isPassiveLinkable())
+                minNode->children.push_back(child);
+            else {
+                int index = minNode->firstPassiveChildIndex();
+                auto it = minNode->children.begin() + index;
+                minNode->children.insert(it, child);
+            }
+        child->parent = minNode;
+    }
+    h->root = minNode;
+    // sterg nodul scos din coada
+    auto it = find(h->head.begin(), h->head.end(), minNode);
+    if (it != h->head.end())
+        h->head.erase(it);
+    h->size--;
+    h->root->active = nullptr;
+    
+    for (int j = 0; j < min(2, int(h->head.size())); j++) {
+        Node* c = h->head[0];
+        h->head.pop_front();
+        h->head.push_back(c);
+        int ct = 2;
+        while (ct--) {
+            int k = c->children.size() - 1;
+            if (k < 0)
+                continue;
+            if (c->children[k]->isPassiveLinkable()) {
+                minNode->children.push_back(c->children[k]);
+                c->children[k]->parent = minNode;
+                c->children.pop_back();
+                if (!c->isActiveRoot() && c->isActive())
+                    c->loss++;
+            }
+            else if (c->children[k]->isPassive()) {
+                int index = minNode->firstPassiveChildIndex();
+                auto it = minNode->children.begin() + index;
+                minNode->children.insert(it, c->children[k]);
+                c->children[k]->parent = minNode;
+                c->children.pop_back();
+                if (!c->isActiveRoot() && c->isActive())
+                    c->loss++;
+            }
+        }
+    }
+    if (!h->twoNodeLossReduction()) {
+        h->oneNodeLossReduction();
+    }
+    while (h->activeRootReduction() || h->rootDegreeReduction()) {}
+    return h;
+}
+
 void bfs(const Heap* h) {
     deque<Node*> q = { h->root };
     while (!q.empty()) {
@@ -261,19 +449,59 @@ void bfs(const Heap* h) {
         }
         cout << endl;
     }
+    cout << "Q: ";
+    for (const auto& node : h->head)
+        cout << node->key << " ";
+    cout << endl;
+}
+
+Heap* insertNumbers(int val_min, int val_max, int cnt, Heap* H)
+{
+    int randomNumber;
+    srand(static_cast<unsigned int>(std::time(nullptr)));
+    for (int i = 0; i < cnt; i++) {
+        randomNumber = val_min + rand() % (val_max - val_min + 1);
+        H = insert(H, randomNumber);
+    }
+    return H;
+}
+
+Heap* removeNumbers(int cnt, Heap* H) {
+    for (int i = 0; i < cnt; i++) {
+        cout << H->root->key << "\n";
+        H = deleteMin(H);
+    }
+    return H;
 }
 
 int main()
 {
     Heap* H = new Heap();
-    H = insert(H, 10);
-    H = insert(H, 11);
-    H = insert(H, 12);
-    H = insert(H, 13);
+    /*H = insert(H, 1);
+    H = insert(H, 9);
+    H = insert(H, 8);
+    H = insert(H, 3);
+    H = insert(H, 4);
+    H = insert(H, 2);
+    H = insert(H, 5);
+    H = insert(H, 6);
+    H = insert(H, 0);
+    H = insert(H, 7);
+
+    Heap* H2 = new Heap();
+    H2 = insert(H2, 10);
+    H2 = insert(H2, 5);
+    H2 = insert(H2, 7);
+    //bfs(H);
+    H = merge(H, H2);
     bfs(H);
+    cout << "Min is: " << H->root->key << endl;
+    H = deleteMin(H);
+    bfs(H);
+
     cout << endl << H->root->getHeight();
     map<int, deque<Node*>> myMap;
-    H->root->updateActiveNode(myMap);
+    H->root->updateActiveRoot(myMap);
 
     // print map<int, deque<Node*>>
     for (const auto& pair : myMap) {
@@ -282,6 +510,8 @@ int main()
             std::cout << value->key << " ";
         }
         std::cout << std::endl;
-    }
+    }*/
+    H = insertNumbers(1, 100, pow(10, 7), H);
+    H = removeNumbers(1000, H);
     return 0;
 }
