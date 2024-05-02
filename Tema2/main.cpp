@@ -137,6 +137,8 @@ struct Heap {
     Active* active = new Active();
     deque<Node*> head;
 
+    //~Heap() { delete active; }
+
     Node* findNode(const Node* node) {
         if (!root)
             return nullptr;
@@ -153,7 +155,7 @@ struct Heap {
         if (!temp[0]->isPassiveLinkable() || !temp[1]->isPassiveLinkable() || !temp[2]->isPassiveLinkable())
             return false;
 
-        cout << "Root Degree Reduction\n";
+        //cout << "Root Degree Reduction\n";
         // sortez ult 3 noduri crescator dupa cheie
         sort(temp.begin(), temp.end(), [](const Node* a, const Node* b) {
             return a->key < b->key;
@@ -196,7 +198,7 @@ struct Heap {
             if (pair.second.size() >= 2 && !stop) {
                 Node* x = pair.second[0];
                 Node* y = pair.second[1];
-                cout << "Active Root Reduction on " << x->key << " " << y->key << " \n";
+                //cout << "Active Root Reduction on " << x->key << " " << y->key << " \n";
                 if (x->key > y->key) 
                     swap(x, y);
                 // sterge pe y din lista de copii
@@ -231,7 +233,7 @@ struct Heap {
         Node* x = root->getActiveLossTwo();
         if (!x)
             return false;
-        cout << "One node Loss Reduction\n";
+        //cout << "One node Loss Reduction\n";
         Node* y = x->parent;
 
         root->children.push_front(x);
@@ -271,7 +273,7 @@ struct Heap {
                 stop = true;
                 if (x->key > y->key)
                     swap(x, y);
-                cout << "Two node Loss Reduction\n";
+                //cout << "Two node Loss Reduction\n";
 
                 Node* z = y->parent;
                 x->children.push_front(y);
@@ -327,6 +329,8 @@ Heap* merge(Heap* x, Heap* y) {
     for (Node* node : largeSizeHeap->head)
         smallSizeHeap->head.push_back(node);
     smallRootHeap->head = smallSizeHeap->head;
+
+    delete largeRootHeap;
 
     // restore invariants
     int numA = 1;
@@ -394,13 +398,14 @@ Heap* deleteMin(Heap* h) {
             }
         child->parent = minNode;
     }
+    delete h->root;
     h->root = minNode;
     // sterg nodul scos din coada
     auto it = find(h->head.begin(), h->head.end(), minNode);
     if (it != h->head.end())
         h->head.erase(it);
     h->size--;
-    h->root->active = nullptr;
+    h->root->active = nullptr;// might leak
     
     for (int j = 0; j < min(2, int(h->head.size())); j++) {
         Node* c = h->head[0];
@@ -460,6 +465,8 @@ Heap* insertNumbers(int val_min, int val_max, int cnt, Heap* H)
     int randomNumber;
     srand(static_cast<unsigned int>(std::time(nullptr)));
     for (int i = 0; i < cnt; i++) {
+        if (i % 1000 == 0)
+            cout << i << endl;
         randomNumber = val_min + rand() % (val_max - val_min + 1);
         H = insert(H, randomNumber);
     }
@@ -467,10 +474,13 @@ Heap* insertNumbers(int val_min, int val_max, int cnt, Heap* H)
 }
 
 Heap* removeNumbers(int cnt, Heap* H) {
+    int k = 0;
     for (int i = 0; i < cnt; i++) {
+        k++;
         cout << H->root->key << "\n";
         H = deleteMin(H);
     }
+    cout << k;
     return H;
 }
 
@@ -511,7 +521,8 @@ int main()
         }
         std::cout << std::endl;
     }*/
-    H = insertNumbers(1, 100, pow(10, 7), H);
+    H = insertNumbers(1, 1000, pow(10, 5), H);
+    cout << "delete";
     H = removeNumbers(1000, H);
     return 0;
 }
