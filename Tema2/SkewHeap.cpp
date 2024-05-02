@@ -76,6 +76,23 @@ void test(int val_min, int val_max, long long cnt, SkewHeap* H) {
     cout << endl << duration.count();
 }
 
+void insertAndDel(int val_min, int val_max, long long cnt, SkewHeap* H) {
+    auto start = std::chrono::high_resolution_clock::now();
+    int randomNumber;
+    srand(static_cast<unsigned int>(std::time(nullptr)));
+    for (int i = 0; i < cnt; i++) {
+        if (i && i % 1000 == 0) {
+            cout << i << " " << H->key << "\n";
+            H = SkewHeap::mergee(H->left, H->right);
+        }
+        randomNumber = val_min + rand() % (val_max - val_min + 1);
+        H = SkewHeap::Add(H, randomNumber);
+    }
+    auto end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    cout << endl << duration.count();
+}
+
 int n, m, x, y, z;
 ifstream f("date.in");
 ofstream g("date.out");
@@ -114,7 +131,8 @@ int main()
         }
     }*/
     SkewHeap* H = new SkewHeap();
-    test(pow(10, 3), pow(10, 7), pow(10, 9), H);
+    //test(pow(10, 3), pow(10, 7), pow(10, 9), H);
+    insertAndDel(pow(10, 3), pow(10, 7), pow(10, 7), H);
     return 0;
 
 }
